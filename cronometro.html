@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Cronometro analogico + Ora Internet digitale</title>
+  <style>
+    :root{
+      --bg1:#0b1020;
+      --bg2:#0a0f1a;
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.65);
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --green: rgba(73,227,122,.95);
+      --pink: rgba(255,92,156,.95);
+      --cyan: rgba(0,220,255,.95);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:grid;
+      place-items:center;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background:
+        radial-gradient(1200px 700px at 20% 10%, rgba(124,92,255,.22), transparent 60%),
+        radial-gradient(900px 600px at 80% 30%, rgba(0,200,255,.18), transparent 55%),
+        radial-gradient(700px 500px at 55% 85%, rgba(255,120,180,.14), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      color:var(--text);
+    }
+
+    .wrap{
+      width:min(900px, 95vw);
+      padding:18px 18px 16px;
+      border-radius:24px;
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+      align-items:center;
+    }
+
+    .top{
+      width:100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .title{
+      font-size:15px;
+      font-weight:800;
+      color:rgba(255,255,255,.92);
+      user-select:none;
+    }
+    .badge{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:#ffcc00;
+      box-shadow:0 0 0 4px rgba(255,204,0,.14);
+    }
+    .dot.ok{ background:#49e37a; box-shadow:0 0 0 4px rgba(73,227,122,.14); }
+    .dot.bad{ background:#ff5b7a; box-shadow:0 0 0 4px rgba(255,91,122,.16); }
+
+    /* ===== ORA INTERNET DIGITALE (EVIDENZIATA) ===== */
+    .internetTimeBox{
+      width:100%;
+      text-align:center;
+      padding:16px 10px 14px;
+      border-radius:20px;
+      background: rgba(0,0,0,.30);
+      border: 1px solid rgba(0,220,255,.28);
+      box-shadow: 0 0 40px rgba(0,220,255,.18);
+    }
+    .internetTime{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: clamp(42px, 7.5vw, 86px);
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: var(--cyan);
+      text-shadow: 0 0 20px rgba(0,220,255,.55);
+      user-select:none;
+    }
+    .internetMeta{
+      margin-top:8px;
+      display:flex;
+      gap:10px;
+      justify-content:center;
+      flex-wrap:wrap;
+      color: var(--muted);
+      font-size:13px;
+      user-select:none;
+    }
+    .mono{ font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .grid{
+      width:100%;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+
+    .section{
+      border-radius:20px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      align-items:center;
+    }
+    .sectionHead{
+      width:100%;
+      display:flex;
+      justify-content:space-between;
+      align-items:baseline;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .sectionTitle{
+      font-size:13px;
+      font-weight:800;
+      letter-spacing:.2px;
+      color: rgba(255,255,255,.92);
+      user-select:none;
+    }
+    .sectionSub{
+      font-size:12px;
+      color: var(--muted);
+      user-select:none;
+    }
+
+    .clock{
+      width:min(360px, 82vw);
+      aspect-ratio:1/1;
+      border-radius:50%;
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.05),
+        inset 0 -18px 55px rgba(0,0,0,.28),
+        0 22px 70px rgba(0,0,0,.45);
+      background:
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,.09), transparent 58%),
+        radial-gradient(circle at 50% 45%, rgba(255,255,255,.05), rgba(255,255,255,.03) 55%, rgba(0,0,0,.10) 100%);
+      position:relative;
+    }
+    .shine{
+      position:absolute;
+      inset:-30%;
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,.14), transparent 45%);
+      transform: rotate(-18deg);
+      pointer-events:none;
+      z-index:2;
+    }
+    svg{ width:100%; height:100%; display:block; position:relative; z-index:1; }
+
+    .num{
+      font-weight:800;
+      font-size:10px;
+      fill: rgba(255,255,255,.86);
+      user-select:none;
+    }
+    .tickSmall{ stroke: rgba(255,255,255,.35); stroke-width:1.2; stroke-linecap:round; }
+    .tickBig{ stroke: rgba(255,255,255,.70); stroke-width:2.2; stroke-linecap:round; }
+
+    /* Cronometro */
+    .swHandMin { stroke: rgba(255,255,255,.92); stroke-width:3.4; stroke-linecap:round; }
+    .swHandSec { stroke: var(--green);          stroke-width:2.0; stroke-linecap:round; } /* secondi VERDE */
+    .swHandSub { stroke: rgba(255,255,255,.55); stroke-width:1.6; stroke-linecap:round; } /* decimi */
+    .centerOuter{ fill: rgba(255,255,255,.85); }
+    .centerInnerGreen{ fill: rgba(73,227,122,.95); }
+
+    .panel{
+      width:100%;
+      display:flex;
+      gap:10px;
+      justify-content:space-between;
+      flex-wrap:wrap;
+    }
+    .card{
+      flex:1 1 220px;
+      min-width:220px;
+      padding:10px 12px;
+      border-radius:16px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+    .label{ font-size:12px; color:var(--muted); margin-bottom:6px; user-select:none; }
+    .value{ font-size:16px; font-weight:800; letter-spacing:.2px; user-select:none; }
+    .small{ font-size:12px; color:var(--muted); margin-top:6px; line-height:1.3; }
+
+    .controls{
+      width:100%;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+    button{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+      color: rgba(255,255,255,.92);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:800;
+      letter-spacing:.2px;
+      cursor:pointer;
+      user-select:none;
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+    }
+    button:hover{ background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.18); }
+    button:active{ transform: translateY(1px); }
+    button:disabled{ opacity:.45; cursor:not-allowed; }
+    .btnPrimary{ border-color: rgba(73,227,122,.35); }
+    .btnDanger{ border-color: rgba(255,91,122,.35); }
+    .btnGhost{ border-style:dashed; }
+
+    .laps{
+      width:100%;
+      max-height: 148px;
+      overflow:auto;
+      padding:8px 10px;
+      border-radius:16px;
+      background: rgba(0,0,0,.15);
+      border: 1px solid rgba(255,255,255,.10);
+      font-size:12px;
+      color: rgba(255,255,255,.82);
+    }
+    .laps .row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:6px 2px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .laps .row:last-child{ border-bottom:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">Mix: ora Internet digitale + cronometro analogico</div>
+      <div class="badge" title="Stato sincronizzazione ora Internet">
+        <span class="dot" id="dot"></span>
+        <span id="status">Sincronizzo…</span>
+      </div>
+    </div>
+
+    <!-- ORA INTERNET DIGITALE GRANDE -->
+    <div class="internetTimeBox">
+      <div class="internetTime" id="internetTime">--:--:--</div>
+      <div class="internetMeta">
+        <span id="internetDate">—</span>
+        <span class="mono" id="source">—</span>
+        <span class="mono" id="skew">—</span>
+      </div>
+    </div>
+
+    <!-- CRONOMETRO ANALOGICO -->
+    <div class="grid">
+      <div class="section">
+        <div class="sectionHead">
+          <div class="sectionTitle">Cronometro (analogico)</div>
+          <div class="sectionSub mono" id="swState">Pronto</div>
+        </div>
+
+        <div class="clock">
+          <div class="shine"></div>
+          <svg viewBox="0 0 200 200" aria-label="Cronometro analogico">
+            <circle cx="100" cy="100" r="92" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="1"/>
+            <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+
+            <g id="swTicks"></g>
+            <g id="swNums"></g>
+
+            <g id="swHands" transform="translate(100 100)">
+              <!-- secondi (verde) -->
+              <line id="swS" class="swHandSec" x1="0" y1="18" x2="0" y2="-74"/>
+              <!-- minuti -->
+              <line id="swM" class="swHandMin" x1="0" y1="14" x2="0" y2="-62"/>
+              <!-- decimi (opzionale) -->
+              <line id="swT" class="swHandSub" x1="0" y1="18" x2="0" y2="-52"/>
+            </g>
+
+            <circle class="centerOuter" cx="100" cy="100" r="5"/>
+            <circle class="centerInnerGreen" cx="100" cy="100" r="2.2"/>
+          </svg>
+        </div>
+
+        <div class="panel">
+          <div class="card">
+            <div class="label">Tempo trascorso</div>
+            <div class="value mono" id="swDigital">00:00:00.0</div>
+            <div class="small" id="swHint">Start → avvia/riprende · Stop parziale → pausa + salva · Stop totale → ferma e blocca · Reset → azzera</div>
+          </div>
+          <div class="card">
+            <div class="label">Ultimo parziale</div>
+            <div class="value mono" id="swLastLap">—</div>
+            <div class="small mono" id="swTotalAtStop">—</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btnPrimary" id="btnStart">Start</button>
+          <button id="btnPartial">Stop parziale</button>
+          <button class="btnDanger" id="btnTotal">Stop totale</button>
+          <button class="btnGhost" id="btnReset">Reset</button>
+        </div>
+
+        <div class="laps" id="laps" aria-label="Elenco parziali">
+          <div class="row"><span>Parziali</span><span class="mono">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ========= UTIL SVG =========
+  function polar(cx, cy, r, deg){
+    const rad = (deg - 90) * Math.PI / 180; // 0° in alto
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  function drawTicksAndNums(ticksG, numsG){
+    for(let i=0;i<60;i++){
+      const deg = i*6;
+      const big = (i%5===0);
+      const r1 = big ? 72 : 74;
+      const r2 = 80;
+      const p1 = polar(100,100,r1,deg);
+      const p2 = polar(100,100,r2,deg);
+      const line = document.createElementNS("http://www.w3.org/2000/svg","line");
+      line.setAttribute("x1", p1.x.toFixed(2));
+      line.setAttribute("y1", p1.y.toFixed(2));
+      line.setAttribute("x2", p2.x.toFixed(2));
+      line.setAttribute("y2", p2.y.toFixed(2));
+      line.setAttribute("class", big ? "tickBig" : "tickSmall");
+      ticksG.appendChild(line);
+    }
+    for(let n=1;n<=12;n++){
+      const deg = n*30;
+      const p = polar(100,100,60,deg);
+      const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+      t.textContent = String(n);
+      t.setAttribute("x", p.x.toFixed(2));
+      t.setAttribute("y", (p.y+3.5).toFixed(2));
+      t.setAttribute("text-anchor","middle");
+      t.setAttribute("class","num");
+      numsG.appendChild(t);
+    }
+  }
+
+  drawTicksAndNums(document.getElementById("swTicks"), document.getElementById("swNums"));
+
+  // ========= ORA DA INTERNET (DIGITALE GRANDE) =========
+  const TIMEZONE = "Europe/Rome";
+  const API_URL = `https://gettimeapi.dev/v1/time?timezone=${encodeURIComponent(TIMEZONE)}`;
+
+  const elDot = document.getElementById("dot");
+  const elStatus = document.getElementById("status");
+  const elTime = document.getElementById("internetTime");
+  const elDate = document.getElementById("internetDate");
+  const elSource = document.getElementById("source");
+  const elSkew = document.getElementById("skew");
+
+  const setStatus = (kind, text) => {
+    elStatus.textContent = text;
+    elDot.classList.remove("ok","bad");
+    if(kind==="ok") elDot.classList.add("ok");
+    if(kind==="bad") elDot.classList.add("bad");
+  };
+
+  let baseUnixMs = null;
+  let basePerfMs = null;
+  let lastSkewMs = null;
+
+  const pad2 = (x)=>String(x).padStart(2,"0");
+  function formatDateIT(date){
+    const days=["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"];
+    const months=["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+    return `${days[date.getDay()]} ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  }
+  function nowFromInternetClock(){
+    if(baseUnixMs==null || basePerfMs==null) return null;
+    return new Date(baseUnixMs + (performance.now()-basePerfMs));
+  }
+  function updateSkewText(){
+    if(lastSkewMs==null){ elSkew.textContent=""; return; }
+    const sign = lastSkewMs>=0 ? "+" : "−";
+    elSkew.textContent = `scarto ${sign}${Math.abs(lastSkewMs).toFixed(0)}ms`;
+  }
+
+  async function syncInternetTime(){
+    setStatus(null,"Sincronizzo…");
+    elSource.textContent="gettimeapi.dev";
+    const t0 = performance.now();
+    const localBefore = Date.now();
+
+    try{
+      const res = await fetch(API_URL,{cache:"no-store"});
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const data = await res.json();
+
+      let unixMs = null;
+      if(typeof data.timestamp==="number") unixMs = data.timestamp*1000;
+      else if(typeof data.iso8601==="string") unixMs = Date.parse(data.iso8601);
+      else if(typeof data.datetime==="string") unixMs = Date.parse(data.datetime);
+
+      if(!Number.isFinite(unixMs)) throw new Error("Formato tempo non riconosciuto");
+
+      const t1 = performance.now();
+      const centerAdjustMs = (t1 - t0)/2;
+
+      baseUnixMs = unixMs + centerAdjustMs;
+      basePerfMs = performance.now();
+      lastSkewMs = baseUnixMs - localBefore;
+
+      setStatus("ok","Sincronizzato");
+      updateSkewText();
+    }catch(e){
+      baseUnixMs = Date.now();
+      basePerfMs = performance.now();
+      lastSkewMs = null;
+
+      setStatus("bad","Offline (ora locale)");
+      elSource.textContent="locale";
+      elSkew.textContent="";
+      console.warn("Sync fallita:", e);
+    }
+  }
+
+  function renderInternetTime(){
+    const d = nowFromInternetClock() || new Date();
+    elTime.textContent = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+    elDate.textContent = formatDateIT(d);
+  }
+
+  // ========= CRONOMETRO =========
+  const swS = document.getElementById("swS");
+  const swM = document.getElementById("swM");
+  const swT = document.getElementById("swT");
+
+  const elSwDigital = document.getElementById("swDigital");
+  const elSwState = document.getElementById("swState");
+  const elLastLap = document.getElementById("swLastLap");
+  const elTotalAtStop = document.getElementById("swTotalAtStop");
+  const lapsBox = document.getElementById("laps");
+
+  const btnStart = document.getElementById("btnStart");
+  const btnPartial = document.getElementById("btnPartial");
+  const btnTotal = document.getElementById("btnTotal");
+  const btnReset = document.getElementById("btnReset");
+
+  // Modalità richieste:
+  // - Start: avvia (o "sblocca" dopo Stop parziale)
+  // - Stop parziale: FERMA solo le lancette/visualizzazione, ma il tempo CONTINUA a scorrere "sotto"
+  // - Start dopo Stop parziale: riprende mostrando il tempo aggiornato (incluso il periodo di stop)
+  // - Stop totale: ferma davvero e blocca finché non fai Reset
+  let swStarted = false;     // mai partito prima
+  let swLocked  = false;     // dopo stop totale
+  let swFrozen  = false;     // stop parziale (display/lancette congelati)
+  let swBasePerf = 0;        // performance.now() al primo Start
+  let swFrozenAtMs = 0;      // valore mostrato durante il freeze
+  let lapCount = 0;
+
+  function msToText(ms){
+    ms = Math.max(0, ms);
+    const tenths = Math.floor((ms % 1000) / 100);
+    const totalSec = Math.floor(ms / 1000);
+    const s = totalSec % 60;
+    const totalMin = Math.floor(totalSec / 60);
+    const m = totalMin % 60;
+    const h = Math.floor(totalMin / 60);
+    return `${pad2(h)}:${pad2(m)}:${pad2(s)}.${tenths}`;
+  }
+
+  function currentSwMs(){
+    if(!swStarted) return 0;
+    if(swLocked) return swFrozenAtMs; // in lock usiamo swFrozenAtMs come "stop finale"
+    return performance.now() - swBasePerf; // continua sempre, anche durante freeze
+  }
+
+  function shownSwMs(){
+    if(swFrozen || swLocked) return swFrozenAtMs;
+    return currentSwMs();
+  }
+
+  function setSwUI(){
+    if(swLocked){
+      elSwState.textContent = "Stop totale";
+      btnStart.textContent = "Start";
+    }else if(swFrozen){
+      elSwState.textContent = "Stop parziale";
+      btnStart.textContent = "Start";
+    }else if(swStarted){
+      elSwState.textContent = "In corso";
+      btnStart.textContent = "Start";
+    }else{
+      elSwState.textContent = "Pronto";
+      btnStart.textContent = "Start";
+    }
+
+    // Abilitazioni coerenti
+    btnStart.disabled   = swLocked;
+    btnPartial.disabled = (!swStarted || swLocked || swFrozen); // non ha senso "parziale" se già congelato
+    btnTotal.disabled   = (!swStarted || swLocked);             // stop totale possibile anche da freeze (lo gestiamo sotto)
+    btnReset.disabled   = (!swStarted || (!swLocked && !swFrozen && (currentSwMs()===0))); // reset se è partito o se frozen/locked
+  }
+
+  function addLap(label, ms){
+    const row = document.createElement("div");
+    row.className = "row";
+    const left = document.createElement("span");
+    left.textContent = label;
+    const right = document.createElement("span");
+    right.className = "mono";
+    right.textContent = msToText(ms);
+    row.appendChild(left);
+    row.appendChild(right);
+
+    const first = lapsBox.querySelector(".row");
+    if(first && first.textContent.includes("Parziali") && first.textContent.includes("—")){
+      lapsBox.innerHTML = "";
+    }
+    lapsBox.prepend(row);
+  }
+
+  function swStart(){
+    if(swLocked) return;
+
+    // Se era in stop parziale: "sblocca" e torna a mostrare il tempo che nel frattempo è avanzato
+    if(swFrozen){
+      swFrozen = false;
+      setSwUI();
+      return;
+    }
+
+    // Primo start: definisce lo zero
+    if(!swStarted){
+      swStarted = true;
+      swBasePerf = performance.now();
+      swFrozenAtMs = 0;
+      setSwUI();
+      return;
+    }
+
+    // Se è già in corso (swStarted true e non frozen), non facciamo nulla.
+  }
+
+  function swPartialStop(){
+    if(!swStarted || swLocked || swFrozen) return;
+
+    // Congela solo visualizzazione/lancette al valore corrente
+    const ms = shownSwMs();
+    swFrozen = true;
+    swFrozenAtMs = ms;
+
+    lapCount += 1;
+    elLastLap.textContent = msToText(ms);
+    addLap(`Parziale #${lapCount}`, ms);
+
+    setSwUI();
+  }
+
+  function swTotalStop(){
+    if(!swStarted || swLocked) return;
+
+    // Stop totale: prende l'istante corrente (anche se era frozen, "congela" al valore reale attuale)
+    const ms = shownSwMs();
+    swFrozenAtMs = ms;
+    swFrozen = false;
+    swLocked = true;
+
+    elTotalAtStop.textContent = `Totale: ${msToText(ms)}`;
+    addLap("Stop totale", ms);
+
+    setSwUI();
+  }
+
+  function swReset(){
+    swStarted = false;
+    swLocked = false;
+    swFrozen = false;
+    swBasePerf = 0;
+    swFrozenAtMs = 0;
+    lapCount = 0;
+    elSwDigital.textContent = "00:00:00.0";
+    elLastLap.textContent = "—";
+    elTotalAtStop.textContent = "—";
+    lapsBox.innerHTML = '<div class="row"><span>Parziali</span><span class="mono">—</span></div>';
+    setSwUI();
+  }
+
+  btnStart.addEventListener("click", swStart);
+  btnPartial.addEventListener("click", swPartialStop);
+  btnTotal.addEventListener("click", swTotalStop);
+  btnReset.addEventListener("click", swReset);
+
+  // ========= LOOP =========
+  function render(){
+    // ora internet (digitale)
+    renderInternetTime();
+
+    // cronometro
+    const ms = shownSwMs();
+    elSwDigital.textContent = msToText(ms);
+
+    const sec = (ms / 1000) % 60;
+    const min = (ms / 60000) % 60;
+    const tenthsSpin = (ms / 1000) % 1;
+
+    swS.setAttribute("transform", `rotate(${sec*6})`);
+    swM.setAttribute("transform", `rotate(${min*6})`);
+    swT.setAttribute("transform", `rotate(${tenthsSpin*360})`);
+
+    requestAnimationFrame(render);
+  }
+
+  // init
+  setSwUI();
+  syncInternetTime().then(()=>render());
+  setInterval(syncInternetTime, 5*60*1000);
+})();
+</script>
+</body>
+</html>
